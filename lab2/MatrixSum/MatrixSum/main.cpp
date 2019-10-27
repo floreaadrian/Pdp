@@ -2,8 +2,15 @@
 #include <thread>
 #include <cstdlib>
 #include <chrono>
+#include <future>
+#include <vector>
+#include "ThreadPool.h"
 
 using namespace std;
+
+const int NORMAL_WAY = 1;
+const int ASYNC_WAY = 2;
+const int POOL_WAY = 3;
 
 int numberOfLines, numberOfColumns;
 int a[5000][5000], b[5000][5000], c[5000][5000];
@@ -42,7 +49,7 @@ void initialiseMatrix(int matrix[][5000], int numberOfLines, int numberOfColumns
     }
 }
 
-double mainFunc(int numberOfLines, int numberOfColumns, int numberOfThreads)
+double mainFunc(int numberOfLines, int numberOfColumns, int numberOfThreads, int theWay)
 {
     initialiseMatrix(a, numberOfLines, numberOfColumns);
 
@@ -50,7 +57,10 @@ double mainFunc(int numberOfLines, int numberOfColumns, int numberOfThreads)
     int maxNumberOfElementsPerThread;
     int numberOfElements = numberOfLines * numberOfColumns;
     thread threads[numberOfThreads + 1];
-
+    
+    vector<future<void>> futures;
+    ThreadPool pool(numberOfThreads);
+    
     if (numberOfElements % numberOfThreads == 0)
         {
             maxNumberOfElementsPerThread = numberOfElements / numberOfThreads;
@@ -63,12 +73,21 @@ double mainFunc(int numberOfLines, int numberOfColumns, int numberOfThreads)
     auto start4 = chrono::high_resolution_clock::now();
     for (int i=0; i<numberOfThreads; i++)
     {
-        threads[i] = thread(sumGranularity, a, b, c, numberOfLines, numberOfColumns, maxNumberOfElementsPerThread, i);
+        if(theWay == POOL_WAY)
+            futures.push_back(pool.enqueue(sumGranularity, a, b, c, numberOfLines, numberOfColumns, maxNumberOfElementsPerThread, i));
+        else if(theWay == ASYNC_WAY)
+            futures.push_back(async(sumGranularity, a, b, c, numberOfLines, numberOfColumns, maxNumberOfElementsPerThread, i));
+        else if(theWay == NORMAL_WAY)
+            threads[i] = thread(sumGranularity, a, b, c, numberOfLines, numberOfColumns, maxNumberOfElementsPerThread, i);
+            
     }
 
     for (int i=0; i<numberOfThreads; i++)
     {
-        threads[i].join();
+        if(theWay == POOL_WAY || theWay == ASYNC_WAY)
+            futures[i].get();
+        else if(theWay == NORMAL_WAY)
+            threads[i].join();
     }
     auto finish4 = chrono::high_resolution_clock::now();
     chrono::duration<double> elapsed4 = finish4 - start4;
@@ -77,24 +96,26 @@ double mainFunc(int numberOfLines, int numberOfColumns, int numberOfThreads)
 }
 
 void statistic(int numberOfLines, int numberOfColumns, int numberOfThreads){
-    double nr = 0;
-    for(int i = 0; i < 20; ++i)
-        nr += mainFunc(numberOfLines, numberOfColumns, numberOfThreads);
+    double nrNormal = 0;
+    double nrAsync = 0;
+    double nrPool = 0;
+    int iterationNumber = 20;
+    for(int i = 0; i < iterationNumber; ++i){
+        nrNormal += mainFunc(numberOfLines, numberOfColumns, numberOfThreads, NORMAL_WAY);
+        nrAsync += mainFunc(numberOfLines, numberOfColumns, numberOfThreads, ASYNC_WAY);
+        nrPool += mainFunc(numberOfLines, numberOfColumns, numberOfThreads, POOL_WAY);
+    }
     cout<<"------------------------------------------\n";
-    cout<<numberOfLines<<"   |  "<<numberOfColumns<<"   |  "<<numberOfThreads<<"  |  "<<nr/20<<"\n";
+    cout<<"Async   | "<<numberOfThreads<<"  |  "<<nrAsync/iterationNumber<<"\n";
+    cout<<"Pool    | "<<numberOfThreads<<"  |  "<<nrPool/iterationNumber<<"\n";
+    cout<<"Normal  | "<<numberOfThreads<<"  |  "<<nrNormal/iterationNumber<<"\n";
 }
 
 int main()
 {
-    cout<<"Lines | Columns | Threads | Time\n";
-//    statistic(3, 5, 2);
-//    statistic(3, 5, 2);
+    cout<<"Way     | Threads | Time\n";
     statistic(5000, 5000, 1);
     statistic(5000, 5000, 2);
     statistic(5000, 5000, 4);
-//    statistic(5000, 5000, 8);
-//    statistic(5000, 5000, 10);
-//    statistic(5000, 5000, 25);
-//    mainFunc(5000, 5000, 80);
     return 0;
 }
