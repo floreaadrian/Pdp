@@ -1,0 +1,4 @@
+rootProject.name = 'untitled'
+rootProject.name = 'lab3'
+include 'src'
+
