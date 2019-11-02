@@ -14,7 +14,7 @@ const int POOL_WAY = 3;
 
 int numberOfLines, numberOfColumns;
 int a[5000][5000], b[5000][5000], c[5000][5000];
-
+bool itsDone[1000];
 
 void sum(int a, int b, int &c)
 {
@@ -36,6 +36,7 @@ void sumGranularity(int a[][5000], int b[][5000], int c[][5000], int numberOfLin
         }
         columnStart = 0;
     }
+    itsDone[threadId] = true;
 }
 
 void initialiseMatrix(int matrix[][5000], int numberOfLines, int numberOfColumns)
@@ -60,6 +61,8 @@ double mainFunc(int numberOfLines, int numberOfColumns, int numberOfThreads, int
     
     vector<future<void>> futures;
     ThreadPool pool(numberOfThreads);
+    for(int i = 0; i < numberOfThreads; ++i)
+    itsDone[i] = false;
     
     if (numberOfElements % numberOfThreads == 0)
         {
@@ -84,10 +87,20 @@ double mainFunc(int numberOfLines, int numberOfColumns, int numberOfThreads, int
 
     for (int i=0; i<numberOfThreads; i++)
     {
-        if(theWay == POOL_WAY || theWay == ASYNC_WAY)
+        if(theWay == POOL_WAY)
             futures[i].get();
         else if(theWay == NORMAL_WAY)
             threads[i].join();
+        else if(theWay == ASYNC_WAY){
+            while(true){
+                bool toBreak = true;
+                for(int i = 0; i < futures.size(); ++i)
+                    if(itsDone[i] == false)
+                        toBreak = false;
+                if(toBreak)
+                    break;
+            }
+        }
     }
     auto finish4 = chrono::high_resolution_clock::now();
     chrono::duration<double> elapsed4 = finish4 - start4;

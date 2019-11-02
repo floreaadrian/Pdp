@@ -14,6 +14,7 @@ const int POOL_WAY = 3;
 
 int numberOfLinesA, numberOfColumnsALinesB, numberOfColumnsB;
 int a[1000][1000], b[1000][1000], c[1000][1000];
+bool itsDone[1000];
 
 void product(int a[][1000], int b[][1000], int c[][1000], int numberOfLinesAndColumns, int line, int column)
 {
@@ -39,6 +40,7 @@ void productGranularity(int a[][1000], int b[][1000], int c[][1000], int numberO
         }
         columnStart = 0;
     }
+    itsDone[threadId] = true;
 }
 
 void initialiseMatrix(int matrix[][1000], int numberOfLines, int numberOfColumns)
@@ -62,8 +64,8 @@ double mainFunc(int numberOfLinesA, int numberOfColumnsALinesB, int numberOfColu
     thread threads[numberOfThreads + 1];
     vector<future<void>> futures;
     ThreadPool pool(numberOfThreads);
-
-
+    for(int i = 0; i < numberOfThreads; ++i)
+        itsDone[i] = false;
     if (numberOfElements % numberOfThreads == 0)
         {
             maxNumberOfElementsPerThread = numberOfElements / numberOfThreads;
@@ -86,10 +88,20 @@ double mainFunc(int numberOfLinesA, int numberOfColumnsALinesB, int numberOfColu
 
     for (int i=0; i<numberOfThreads; i++)
     {
-        if(theWay == POOL_WAY || theWay == ASYNC_WAY)
+        if(theWay == POOL_WAY)
             futures[i].get();
         else if(theWay == NORMAL_WAY)
             threads[i].join();
+        else if(theWay == ASYNC_WAY){
+            while(true){
+                bool toBreak = true;
+                for(int i = 0; i < futures.size(); ++i)
+                    if(itsDone[i] == false)
+                        toBreak = false;
+                if(toBreak)
+                    break;
+            }
+        }
     }
     auto finish4 = chrono::high_resolution_clock::now();
 
