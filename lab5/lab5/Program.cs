@@ -36,7 +36,7 @@ namespace lab5
 
         private static List<String> response = new List<String>() { String.Empty, String.Empty, String.Empty };
 
-        private static async void StartClient(string hostName, int i)
+        private static  void StartClient(string hostName, int i)
         {
             // Connect to a remote device.  
             try
@@ -50,11 +50,13 @@ namespace lab5
                 Socket client = new Socket(ipAddress.AddressFamily,
                     SocketType.Stream, ProtocolType.Tcp);
 
-                await Connect(client, remoteEP, i);
+                //await
+                    Connect(client, remoteEP, i);
                 connectDone[i].WaitOne();
 
                 // Send test data to the remote device.
-                await Send(client,
+                //await
+                    Send(client,
                     "GET / HTTP/1.1\r\nHost: "
                     + hostName
                     + "\r\nUser - Agent: Mozilla / 5.0(Windows NT 10.0; Win64; x64; rv: 56.0) Gecko / 20100101 Firefox / 56.0\r\nAccept: text / html,application / xhtml + xml,application / xml; q = 0.9,*/*;q=0.8\r\nAccept - Language: en-US,en;q=0.5\r\nAccept - Encoding: gzip, deflate\r\nReferer: http://clipart-library.com/image_gallery/575066.png\r\nConnection: keep-alive\r\nUpgrade - Insecure-Requests: 1\r\nIf - Modified-Since: Wed, 11 Oct 2019 10:35:52 GMT\r\nIf - None-Match: \"58b6ea58-12969\"\r\nCache - Control: max-age=0\r\n\r\n",
@@ -62,7 +64,8 @@ namespace lab5
                 sendDone[i].WaitOne();
 
                 // Receive the response from the remote device.  
-                await Receive(client, i);
+                //await
+                    Receive(client, i);
                 receiveDone[i].WaitOne();
 
                 //Thread.Sleep(2000);
@@ -105,7 +108,7 @@ namespace lab5
             }
         }
 
-        private static async Task Connect(Socket client, IPEndPoint remoteEP, int i)
+        private static void Connect(Socket client, IPEndPoint remoteEP, int i)
         {
             try
             {
@@ -125,7 +128,7 @@ namespace lab5
             }
         }
 
-        private static async Task Receive(Socket client, int i)
+        private static void Receive(Socket client, int i)
         {
             try
             {
@@ -163,7 +166,7 @@ namespace lab5
 
         }
 
-        private static async void ReceiveCallback(IAsyncResult ar)
+        private static void ReceiveCallback(IAsyncResult ar)
         {
             try
             {
@@ -178,7 +181,7 @@ namespace lab5
                 state.sb.Append(Encoding.ASCII.GetString(state.buffer, 0, bytesRead));
 
                 string[] parts = state.sb.ToString().Split(new[] { "\r\n\r\n" }, System.StringSplitOptions.RemoveEmptyEntries);
-
+                //if(parts.Length>0)
                 if (parts[1].Length < ParseHttpResponse(state.sb.ToString()))
                 {
                     // Get the rest of the data.  
@@ -202,7 +205,7 @@ namespace lab5
             }
         }
 
-        private static async Task Send(Socket client, String data, int i)
+        private static void Send(Socket client, String data, int i)
         {
             // Convert the string data to byte data using ASCII encoding.  
             byte[] byteData = Encoding.ASCII.GetBytes(data);
@@ -218,7 +221,7 @@ namespace lab5
                 new AsyncCallback(SendCallback), s);
         }
 
-        private static async void SendCallback(IAsyncResult ar)
+        private static void SendCallback(IAsyncResult ar)
         {
             try
             {
@@ -254,8 +257,6 @@ namespace lab5
                 tasks.Add(Task.Factory.StartNew(doStart, i));
             }
             Task.WaitAll(tasks.ToArray());
-
-
         }
 
         static void doStart(object ar)
