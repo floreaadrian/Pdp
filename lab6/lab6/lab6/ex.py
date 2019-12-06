@@ -1,6 +1,6 @@
 from random import randint
 
-T = [10000]
+T = [1000]
 
 def test(tid, n):
   with open("tests.in" , "w") as f:

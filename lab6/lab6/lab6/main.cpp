@@ -202,13 +202,14 @@ vector <thread> threads;
 mutex mx;
 
 inline void work(int idx) {
-    mx.lock();
   for(int i = idx; i < n; i += T) {
       for(int j = 0; j < n; j++){
+          mx.lock();
           sol[i + j] += a[i] * b[j];
+          mx.unlock();
       }
   }
-    mx.unlock();
+//    mx.unlock();
 }
 
 inline void solveNaiveWithThreads(string filename) {

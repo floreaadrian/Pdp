@@ -36,7 +36,7 @@ namespace lab5
 
         private static List<String> response = new List<String>() { String.Empty, String.Empty, String.Empty };
 
-        private static  void StartClient(string hostName, int i)
+        private static async  void StartClient(string hostName, int i)
         {
             // Connect to a remote device.  
             try
@@ -51,11 +51,11 @@ namespace lab5
                     SocketType.Stream, ProtocolType.Tcp);
 
                 //await
-                    Connect(client, remoteEP, i);
+                    Task.Run(()=>Connect(client, remoteEP, i));
                 connectDone[i].WaitOne();
 
                 // Send test data to the remote device.
-                //await
+                await
                     Send(client,
                     "GET / HTTP/1.1\r\nHost: "
                     + hostName
@@ -64,7 +64,7 @@ namespace lab5
                 sendDone[i].WaitOne();
 
                 // Receive the response from the remote device.  
-                //await
+                await
                     Receive(client, i);
                 receiveDone[i].WaitOne();
 
@@ -108,7 +108,7 @@ namespace lab5
             }
         }
 
-        private static void Connect(Socket client, IPEndPoint remoteEP, int i)
+        private static async Task Connect(Socket client, IPEndPoint remoteEP, int i)
         {
             try
             {
@@ -128,7 +128,7 @@ namespace lab5
             }
         }
 
-        private static void Receive(Socket client, int i)
+        private static async Task Receive(Socket client, int i)
         {
             try
             {
@@ -182,6 +182,7 @@ namespace lab5
 
                 string[] parts = state.sb.ToString().Split(new[] { "\r\n\r\n" }, System.StringSplitOptions.RemoveEmptyEntries);
                 //if(parts.Length>0)
+                Console.WriteLine(parts[1].Length);
                 if (parts[1].Length < ParseHttpResponse(state.sb.ToString()))
                 {
                     // Get the rest of the data.  
@@ -205,7 +206,7 @@ namespace lab5
             }
         }
 
-        private static void Send(Socket client, String data, int i)
+        private static async Task Send(Socket client, String data, int i)
         {
             // Convert the string data to byte data using ASCII encoding.  
             byte[] byteData = Encoding.ASCII.GetBytes(data);

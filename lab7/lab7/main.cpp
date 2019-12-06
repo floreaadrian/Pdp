@@ -1,114 +1,126 @@
 #include <iostream>
-#include <fstream>
-#include <vector>
 #include <thread>
-#include <assert.h>
-#include <cassert>
-#include <chrono>
+#include <cstdlib>
+#include <time.h>
+#include <vector>
+#include <algorithm>
+#include <mutex>
 
 using namespace std;
 
-const int maxlg = 22;
-const int maxn = 5000005;
+struct elem
+{
+    int val;
+    mutex mtx;
+};
 
-int n;
-long long dp[maxlg][maxn], sum[maxn], psum[maxn];
-long long b[maxn];
+int  n = 50, noThreads = 50, activeThreads = 0;
+vector<int> a(n);
+vector<elem> b(n);
+vector<int> c(n);
+vector<thread> threads;
 
-const int T = 5;
+void assignRandomValues()
+{
+    for (int i = 0; i < n; i++)
+    {
+        int element = rand() % 50 + 1;
+        a[i] = b[i].val = element;
+    }
+}
 
-//#define debug
+void increasePartialSum(vector<elem>& arr, int k, int i)
+{
+    arr[i].mtx.lock();
+    arr[i].val += arr[i - k].val;
+    arr[i].mtx.unlock();
+}
 
-inline void alg() {
-    auto start = std::chrono::high_resolution_clock::now();
-    for(size_t k=1; k<n; k = k*2) {
-        for(size_t i=2*k-1; i<n; i+=2*k) { // in parallel
-            b[i] += b[i-k];
+void partialSums()
+{
+    int k;
+    for (k = 1; k < n; k = k * 2)
+    {
+        for (int i = 2 * k - 1; i < n; i += 2 * k)
+        {
+            if (activeThreads < noThreads)
+            {
+                threads.push_back(thread(increasePartialSum, ref(b), k, i));
+                activeThreads++;
+            }
+            else
+            {
+                increasePartialSum(b, k, i);
+            }
         }
     }
-    // Then, compute each partial sum as a sum of 2^j groups:
-    int k = n/4;
-    for(;k>0; k = k/2) {
-        for(size_t i=3*k-1 ; i<n ; i+=2*k) { // in parallel
-            b[i] += b[i-k];
+
+    activeThreads -= threads.size();
+    for (unsigned int i = 0; i < threads.size(); i++)
+    {
+        threads[i].join();
+    }
+    threads.clear();
+
+    k = k / 4;
+    for (; k > 0; k = k / 2)
+    {
+        for (int i = 3 * k - 1; i < n; i += 2 * k)
+        {
+            if (activeThreads < noThreads)
+            {
+                threads.push_back(thread(increasePartialSum, ref(b), k, i));
+                activeThreads++;
+            }
+            else
+            {
+                increasePartialSum(b, k, i);
+            }
         }
     }
-    
-    auto finish = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> elapsed = finish - start;
-    cout << "From online of an array with " << n
-        << " elements took me " << elapsed.count()<< " seconds\n";
-}
 
-inline void doIt(int idx) {
-  for(int i = idx; i < n; i += T) {
-    int act = 0;
-    int now = i + 1;
-    for(int bit = 0; (1 << bit) <= now; ++ bit) {
-      if(now & (1 << bit)) {
-        sum[i] += dp[bit][act];
-        act += (1 << bit);
-      }
+    for (unsigned int i = 0; i < threads.size(); i++)
+    {
+        threads[i].join();
     }
-  }
+    threads.clear();
 }
 
-void generateArray(int size) {
-    for(int i=0;i<size;++i) {
-        dp[0][i] = rand()%100+1;
-        b[i] = dp[0][i];
+void sumK()
+{
+    c[0] = a[0];
+    for (int i = 1; i < n; i++)
+    {
+        c[i] = c[i - 1] + a[i];
     }
 }
 
-void solveWithThreads() {
-    auto start = std::chrono::high_resolution_clock::now();
-    for(int k = 1; (1 << k) < maxn; ++ k) {
-      for(int i = 0; i < n; ++ i) {
-        dp[k][i] = dp[k - 1][i] + dp[k - 1][i + (1 << (k - 1))];
-      }
-    }
+int main()
+{
+    srand(time(NULL));
 
-    vector <thread> th;
-    for(int i = 0; i < min(T, n); ++ i) {
-      th.push_back(thread(doIt, i));
-    }
-    for(int i = 0; i < th.size(); ++ i) {
-      th[i].join();
-    }
-    auto finish = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> elapsed = finish - start;
-    cout << "(Threaded) Computing partial sums of an array with " << n
-        << " elements took me " << elapsed.count()<< " seconds\n";
-}
+    assignRandomValues();
 
-void solveWithoutThreads(){
-    auto start = std::chrono::high_resolution_clock::now();
-    for(int i=0;i<n;++i)
-        sum[i]+=dp[0][i];
-    auto finish = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> elapsed = finish - start;
-    cout << "Computing partial sums of an array with " << n
-        << " elements took me " << elapsed.count()<< " seconds\n";
-}
+    auto startTime0 = std::chrono::high_resolution_clock::now();
+    sumK();
+    auto finishTime0 = std::chrono::high_resolution_clock::now();
 
-int main() {
-    n = 1000000;
-//
-//  ifstream fin("/Users/adrianflorea/Codes/Pdp/lab7/lab7/sums.in");
-//
-//  fin >> n;
-//  for(int i = 0; i < n; ++ i) {
-//    fin >> dp[0][i];
-//    psum[i] = psum[i - 1] + dp[0][i];
-//  }
-  /// dp[k][i] = sum(a[j]) where i <= j <= i + 2^k - 1
-  // dp[k][i] =
-    solveWithThreads();
-    generateArray(n);
-    for(int i=0;i<n;++i)
-        sum[i] = 0;
-    solveWithoutThreads();
-    generateArray(n);
-    alg();
-  return 0;
+    auto startTime1 = std::chrono::high_resolution_clock::now();
+    partialSums();
+    auto finishTime1 = std::chrono::high_resolution_clock::now();
+
+    for_each(a.begin(), a.end(), [](int el) { cout << el << " "; });
+    cout << "\n";
+    for_each(c.begin(), c.end(), [](int el) { cout << el << " "; });
+    cout << "\n";
+    for (unsigned int i = 0; i < b.size(); i++)
+        cout << b[i].val << " ";
+
+    std::chrono::duration<double> timeElapsed0 = finishTime0 - startTime0;
+    cout << "\nTotal execution [basic version]: " << timeElapsed0.count() * 1000 << " ms\n";
+
+    std::chrono::duration<double> timeElapsed1 = finishTime1 - startTime1;
+    cout << "\nTotal execution [thread version]: " << timeElapsed1.count() * 1000 << " ms\n";
+
+    return 0;
 }
