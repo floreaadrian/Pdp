@@ -14,7 +14,7 @@ struct elem
     mutex mtx;
 };
 
-int  n = 50, noThreads = 50, activeThreads = 0;
+int  n = 50, noThreads = 10, activeThreads = 0;
 vector<int> a(n);
 vector<elem> b(n);
 vector<int> c(n);
@@ -50,7 +50,7 @@ void partialSums()
             }
             else
             {
-                increasePartialSum(b, k, i);
+                increasePartialSum(ref(b), k, i);
             }
         }
     }
@@ -74,7 +74,7 @@ void partialSums()
             }
             else
             {
-                increasePartialSum(b, k, i);
+                increasePartialSum(ref(b), k, i);
             }
         }
     }
